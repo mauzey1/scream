@@ -16,7 +16,7 @@ macro (CreateScorpioTarget CREATE_FLIB)
     CreateGPTLTarget()
 
     # Get Netcdf libs
-    include (GetNetcdfLibs)
+    include (cime/GetNetcdfLibs)
     GetNetcdfLibs()
 
     # Look for pioc lib in the lib subdirectory of the one stored in INSTALL_SHAREDPATH (set by CIME)

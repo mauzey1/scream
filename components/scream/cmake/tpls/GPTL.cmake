@@ -1,5 +1,4 @@
 macro (CreateGPTLTarget)
-
   # Some sanity checks
   if (NOT SCREAM_CIME_BUILD)
     message (FATAL_ERROR "Error! GPTL.cmake currently only works in a CIME build.")
