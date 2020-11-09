@@ -18,7 +18,7 @@ macro (CreateMctTarget)
     set_target_properties(scream_mct PROPERTIES IMPORTED_LOCATION ${MCT_LIB})
     set_target_properties(scream_mct PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${INSTALL_SHAREDPATH}/include)
 
-    include(cime/CsmShare)
+    include(tpls/CsmShare)
     CreateCsmShareTarget()
     target_link_libraries(scream_mct INTERFACE scream_csm_share)
   endif ()

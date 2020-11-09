@@ -31,7 +31,7 @@ macro (CreateCsmShareTarget)
     set_target_properties(scream_csm_share PROPERTIES IMPORTED_LOCATION ${CSM_SHARE_LIB})
     set_target_properties(scream_csm_share PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CSM_SHARE})
 
-    include(cime/Scorpio)
+    include(tpls/Scorpio)
     CreateScorpioTarget(TRUE)
     target_link_libraries(scream_csm_share INTERFACE scream_piof)
   endif ()

@@ -1,18 +1,25 @@
-#include <share/grid/se_grid.hpp>
+#include "share/grid/se_grid.hpp"
 
 namespace scream {
 
 SEGrid::
 SEGrid (const std::string& grid_name,
+        const int num_global_elements,
         const int num_local_elements,
         const int num_gauss_pts,
         const int num_vertical_levels)
- : m_grid_name      (grid_name)
+ : AbstractGrid (GridType::SE, grid_name)
  , m_num_local_elem (num_local_elements)
  , m_num_gp         (num_gauss_pts)
- , m_num_vl         (num_vertical_levels)
 {
-   m_num_local_dofs = m_num_local_elem*m_num_gp*m_num_gp;
+  EKAT_REQUIRE_MSG (
+    num_global_elements>=num_local_elements,
+    "Error! The number of local element is larger than the global one.\n"
+    "       Did you call the constructor with the two swapped?\n");
+
+  m_num_local_dofs  = m_num_local_elem*m_num_gp*m_num_gp;
+  m_num_global_dofs = num_global_elements*m_num_gp*m_num_gp;
+  m_num_vert_levs   = num_vertical_levels;
 }
 
 void SEGrid::

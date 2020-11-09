@@ -12,11 +12,11 @@ macro (CreateScorpioTarget CREATE_FLIB)
   # If c lib is requested (and we didn't already parsed this script), create interface lib
   if (NOT TARGET scream_pioc)
     # Get GPTL as a target
-    include (GPTL)
+    include (tpls/GPTL)
     CreateGPTLTarget()
 
     # Get Netcdf libs
-    include (cime/GetNetcdfLibs)
+    include (tpls/GetNetcdfLibs)
     GetNetcdfLibs()
 
     # Look for pioc lib in the lib subdirectory of the one stored in INSTALL_SHAREDPATH (set by CIME)

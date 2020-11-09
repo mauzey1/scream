@@ -42,9 +42,11 @@ TEST_CASE("point_grid", "") {
 TEST_CASE("se_grid", "") {
 
   // Make the grid and check its initial state.
-  int num_elems = 64;
+  ekat::Comm comm(MPI_COMM_WORLD);
+  int num_my_elems = 10;
+  int num_elems = 10*comm.size();
   int num_gp = 4, num_levels = 72;
-  SEGrid grid("se_grid",num_elems, num_gp, num_levels);
+  SEGrid grid("se_grid",num_elems,num_my_elems, num_gp, num_levels);
   REQUIRE(grid.type() == GridType::SE);
   REQUIRE(grid.name() == "se_grid");
   REQUIRE(grid.get_num_vertical_levels() == num_levels);

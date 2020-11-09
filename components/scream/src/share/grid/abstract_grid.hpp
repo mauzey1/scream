@@ -34,7 +34,7 @@ namespace scream
 class AbstractGrid
 {
 public:
-  using gid_type       = long;          // TODO: use int64_t? int? template class on gid_type?
+  using gid_type       = int;           // TODO: use int64_t? int? template class on gid_type?
   using device_type    = DefaultDevice; // TODO: template class on device type
   using kokkos_types   = KokkosTypes<device_type>;
 
@@ -45,27 +45,74 @@ public:
   // in the native 2d layout
   using lid_to_idx_map_type = kokkos_types::view<int**>;
 
+  // The dofs lat-lon coordinates
+  using coords_type = kokkos_types::view_2d<Real>;
+
+  // Constructor(s) & Destructor
+  AbstractGrid (const GridType type,
+                const std::string& name)
+   : AbstractGrid(0,0,type,name)
+  {
+    // Nothing to do here
+  }
+
+  AbstractGrid (int num_local_dofs,
+                int num_global_dofs,
+                const GridType type,
+                const std::string& name)
+   : m_type (type)
+   , m_name (name)
+   , m_num_local_dofs  (num_local_dofs)
+   , m_num_global_dofs (num_global_dofs)
+  {
+    // Nothing to do here
+  }
+
   virtual ~AbstractGrid () = default;
 
   // Grid description utilities
-  virtual GridType type () const = 0;
-  virtual const std::string& name () const = 0;
+  GridType type () const { return m_type; }
+  const std::string& name () const { return m_name; }
 
   // Native layout of a dof. This is the natural way to index a dof in the grid.
   // E.g., for a 2d structured grid, this could be a set of 2 indices.
   virtual FieldLayout get_native_dof_layout () const  = 0;
 
-  virtual int get_num_vertical_levels () const = 0;
+  int get_num_vertical_levels () const { return m_num_vert_levs; }
 
   // The number of dofs on this MPI rank
-  virtual int get_num_local_dofs () const = 0;
+  int get_num_local_dofs  () const { return m_num_local_dofs;  }
+  gid_type get_num_global_dofs () const { return m_num_global_dofs; }
 
   // Get a 1d view containing the dof gids
-  virtual const dofs_list_type& get_dofs_gids () const = 0;
+  const dofs_list_type& get_dofs_gids () const { return m_dofs_gids; }
 
   // Get a 2d view, where (i,j) entry contains the j-th coordinate of
   // the i-th dof in the native dof layout.
-  virtual lid_to_idx_map_type get_lid_to_idx_map () const = 0;
+  const lid_to_idx_map_type& get_lid_to_idx_map () const { return m_lid_to_idx; }
+
+  // Get dofs coordinates
+  const coords_type& get_dofs_coords () const { return m_dofs_coords; }
+
+protected:
+
+  // The grid name and type
+  GridType     m_type;
+  std::string  m_name;
+
+  // Counters
+  int m_num_local_dofs;
+  int m_num_global_dofs;
+  int m_num_vert_levs;
+
+  // The global ID of each dof
+  dofs_list_type        m_dofs_gids;
+
+  // The map lid->idx
+  lid_to_idx_map_type   m_lid_to_idx;
+
+  // The lat-lon coordinates of each dof
+  coords_type           m_dofs_coords;
 };
 
 } // namespace scream

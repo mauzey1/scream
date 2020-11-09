@@ -22,6 +22,11 @@ enum class GridType {
   Point       // Mesh-free set of points
 };
 
+enum class LatLonType {
+  Degrees,
+  Radians
+};
+
 inline std::string e2str (const GridType type) {
   std::string str;
   switch (type) {
