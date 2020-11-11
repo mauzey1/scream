@@ -259,9 +259,26 @@ void shoc_pblintd_cldcheck_c(Int shcol, Int nlev, Int nlevi, Real* zi, Real* cld
 
 void compute_shoc_vapor_c(Int shcol, Int nlev, Real* qw, Real* ql, Real* qv);
 
-void update_prognostics_implicit_c(Int shcol, Int nlev, Int nlevi, Int num_tracer, Real dtime, Real* dz_zt, Real* dz_zi, Real* rho_zt, Real* zt_grid, Real* zi_grid, Real* tk, Real* tkh, Real* uw_sfc, Real* vw_sfc, Real* wthl_sfc, Real* wqw_sfc, Real* wtracer_sfc, Real* thetal, Real* qw, Real* tracer, Real* tke, Real* u_wind, Real* v_wind);
+void update_prognostics_implicit_c(Int shcol, Int nlev, Int nlevi, Int num_tracer, Real dtime,
+                                   Real* dz_zt, Real* dz_zi, Real* rho_zt, Real* zt_grid, Real* zi_grid,
+                                   Real* tk, Real* tkh, Real* uw_sfc, Real* vw_sfc, Real* wthl_sfc,
+                                   Real* wqw_sfc, Real* wtracer_sfc, Real* thetal, Real* qw, Real* tracer,
+                                   Real* tke, Real* u_wind, Real* v_wind);
 
-void shoc_main_c(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Real* host_dx, Real* host_dy, Real* thv, Real* zt_grid, Real* zi_grid, Real* pres, Real* presi, Real* pdel, Real* wthl_sfc, Real* wqw_sfc, Real* uw_sfc, Real* vw_sfc, Real* wtracer_sfc, Int num_qtracers, Real* w_field, Real* exner, Real* phis, Real* host_dse, Real* tke, Real* thetal, Real* qw, Real* u_wind, Real* v_wind, Real* qtracers, Real* wthv_sec, Real* tkh, Real* tk, Real* shoc_ql, Real* shoc_cldfrac, Real* pblh, Real* shoc_mix, Real* isotropy, Real* w_sec, Real* thl_sec, Real* qw_sec, Real* qwthl_sec, Real* wthl_sec, Real* wqw_sec, Real* wtke_sec, Real* uw_sec, Real* vw_sec, Real* w3, Real* wqls_sec, Real* brunt, Real* shoc_ql2);
+void shoc_main_c(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Real* host_dx, Real* host_dy,
+                 Real* thv, Real* zt_grid, Real* zi_grid, Real* pres, Real* presi, Real* pdel,
+                 Real* wthl_sfc, Real* wqw_sfc, Real* uw_sfc, Real* vw_sfc, Real* wtracer_sfc,
+                 Int num_qtracers, Real* w_field, Real* exner, Real* phis, Real* host_dse, Real* tke,
+                 Real* thetal, Real* qw, Real* u_wind, Real* v_wind, Real* qtracers, Real* wthv_sec,
+                 Real* tkh, Real* tk, Real* shoc_ql, Real* shoc_cldfrac, Real* pblh, Real* shoc_mix,
+                 Real* isotropy, Real* w_sec, Real* thl_sec, Real* qw_sec, Real* qwthl_sec, Real* wthl_sec,
+                 Real* wqw_sec, Real* wtke_sec, Real* uw_sec, Real* vw_sec, Real* w3, Real* wqls_sec,
+                 Real* brunt, Real* shoc_ql2);
+
+void vd_shoc_decomp_c(Int shcol, Int nlev, Int nlevi, Real* kv_term, Real* tmpi, Real* rdp_zt, Real dtime,
+                      Real* flux, Real* du, Real* dl, Real* d);
+
+void vd_shoc_solve_c(Int shcol, Int nlev, Real* du, Real* dl, Real* d, Real* var);
 } // extern "C" : end _c decls
 
 namespace scream {
@@ -769,6 +786,20 @@ void shoc_main(ShocMainData& d)
   shoc_init(d.nlev, true);
   d.transpose<ekat::TransposeDirection::c2f>();
   shoc_main_c(d.shcol, d.nlev, d.nlevi, d.dtime, d.nadv, d.host_dx, d.host_dy, d.thv, d.zt_grid, d.zi_grid, d.pres, d.presi, d.pdel, d.wthl_sfc, d.wqw_sfc, d.uw_sfc, d.vw_sfc, d.wtracer_sfc, d.num_qtracers, d.w_field, d.exner, d.phis, d.host_dse, d.tke, d.thetal, d.qw, d.u_wind, d.v_wind, d.qtracers, d.wthv_sec, d.tkh, d.tk, d.shoc_ql, d.shoc_cldfrac, d.pblh, d.shoc_mix, d.isotropy, d.w_sec, d.thl_sec, d.qw_sec, d.qwthl_sec, d.wthl_sec, d.wqw_sec, d.wtke_sec, d.uw_sec, d.vw_sec, d.w3, d.wqls_sec, d.brunt, d.shoc_ql2);
+  d.transpose<ekat::TransposeDirection::f2c>();
+}
+void vd_shoc_decomp(VdShocDecompData& d)
+{
+  shoc_init(d.nlev(), true);
+  d.transpose<ekat::TransposeDirection::c2f>();
+  vd_shoc_decomp_c(d.shcol(), d.nlev(), d.nlevi(), d.kv_term, d.tmpi, d.rdp_zt, d.dtime, d.flux, d.du, d.dl, d.d);
+  d.transpose<ekat::TransposeDirection::f2c>();
+}
+void vd_shoc_solve(VdShocSolveData& d)
+{
+  shoc_init(d.nlev(), true);
+  d.transpose<ekat::TransposeDirection::c2f>();
+  vd_shoc_solve_c(d.shcol(), d.nlev(), d.du, d.dl, d.d, d.var);
   d.transpose<ekat::TransposeDirection::f2c>();
 }
 // end _c impls
@@ -2354,9 +2385,79 @@ void dp_inverse_f(Int nlev, Int shcol, Real *rho_zt, Real *dz_zt, Real *rdp_zt)
   ekat::device_to_host<int, 1>({rdp_zt}, {shcol}, {nlev}, out_views, true);
 }
 
-void shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Real* host_dx, Real* host_dy, Real* thv, Real* zt_grid, Real* zi_grid, Real* pres, Real* presi, Real* pdel, Real* wthl_sfc, Real* wqw_sfc, Real* uw_sfc, Real* vw_sfc, Real* wtracer_sfc, Int num_qtracers, Real* w_field, Real* exner, Real* phis, Real* host_dse, Real* tke, Real* thetal, Real* qw, Real* u_wind, Real* v_wind, Real* qtracers, Real* wthv_sec, Real* tkh, Real* tk, Real* shoc_ql, Real* shoc_cldfrac, Real* pblh, Real* shoc_mix, Real* isotropy, Real* w_sec, Real* thl_sec, Real* qw_sec, Real* qwthl_sec, Real* wthl_sec, Real* wqw_sec, Real* wtke_sec, Real* uw_sec, Real* vw_sec, Real* w3, Real* wqls_sec, Real* brunt, Real* shoc_ql2)
+void shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Real* host_dx, Real* host_dy,
+                 Real* thv, Real* zt_grid, Real* zi_grid, Real* pres, Real* presi, Real* pdel,
+                 Real* wthl_sfc, Real* wqw_sfc, Real* uw_sfc, Real* vw_sfc, Real* wtracer_sfc,
+                 Int num_qtracers, Real* w_field, Real* exner, Real* phis, Real* host_dse, Real* tke,
+                 Real* thetal, Real* qw, Real* u_wind, Real* v_wind, Real* qtracers, Real* wthv_sec,
+                 Real* tkh, Real* tk, Real* shoc_ql, Real* shoc_cldfrac, Real* pblh, Real* shoc_mix,
+                 Real* isotropy, Real* w_sec, Real* thl_sec, Real* qw_sec, Real* qwthl_sec, Real* wthl_sec,
+                 Real* wqw_sec, Real* wtke_sec, Real* uw_sec, Real* vw_sec, Real* w3, Real* wqls_sec,
+                 Real* brunt, Real* shoc_ql2)
 {
-  // TODO
+
+}
+
+void vd_shoc_decomp_f(Int shcol, Int nlev, Int nlevi, Real* kv_term, Real* tmpi, Real* rdp_zt, Real dtime,
+                      Real* flux, Real* du, Real* dl, Real* d)
+{
+  using SHF = Functions<Real, DefaultDevice>;
+
+  using Scalar     = typename SHF::Scalar;
+  using Spack      = typename SHF::Spack;
+  using Pack1d     = typename ekat::Pack<Real,1>;
+  using view_1d    = typename SHF::view_1d<Pack1d>;
+  using view_2d    = typename SHF::view_2d<Spack>;
+  using KT         = typename SHF::KT;
+  using ExeSpace   = typename KT::ExeSpace;
+  using MemberType = typename SHF::MemberType;
+
+  static constexpr Int num_2d_arrays = 6;
+
+  Kokkos::Array<view_1d, 1> temp_1d_d;
+  Kokkos::Array<view_2d, num_2d_arrays> temp_2d_d;
+  Kokkos::Array<int, num_2d_arrays> dim1_sizes = {shcol, shcol, shcol, shcol, shcol, shcol};
+  Kokkos::Array<int, num_2d_arrays> dim2_sizes = {nlevi, nlevi, nlev,  nlev,  nlev,  nlev};
+  Kokkos::Array<const Real*, num_2d_arrays> ptr_array = {kv_term, tmpi, rdp_zt, du, dl, d};
+
+  // Sync to device
+  ekat::host_to_device({flux}, shcol, temp_1d_d);
+  ekat::host_to_device(ptr_array, dim1_sizes, dim2_sizes, temp_2d_d, true);
+
+  view_1d flux_d(temp_1d_d[0]);
+
+  view_2d
+    kv_term_d(temp_2d_d[0]),
+    tmpi_d(temp_2d_d[1]),
+    rdp_zt_d(temp_2d_d[2]),
+    du_d(temp_2d_d[3]),
+    dl_d(temp_2d_d[4]),
+    d_d(temp_2d_d[5]);
+
+  const Int nk_pack = ekat::npack<Spack>(nlev);
+  const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
+  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+    const Int i = team.league_rank();
+
+    const Scalar flux_s{flux_d(i)[0]};
+    const auto kv_term_s = ekat::subview(kv_term_d, i);
+    const auto tmpi_s = ekat::subview(tmpi_d, i);
+    const auto rdp_zt_s = ekat::subview(rdp_zt_d, i);
+    const auto du_s = ekat::subview(du_d, i);
+    const auto dl_s = ekat::subview(dl_d, i);
+    const auto d_s = ekat::subview(d_d, i);
+
+    SHF::vd_shoc_decomp(team, nlev, kv_term_s, tmpi_s, rdp_zt_s, dtime, flux_s, du_s, dl_s, d_s);
+  });
+
+  // Sync back to host
+  Kokkos::Array<view_2d, 3> inout_views = {du_d, dl_d, d_d};
+  ekat::device_to_host<int,3>({du, dl, d}, {shcol}, {nlev}, inout_views, true);
+}
+
+void vd_shoc_solve_f(Int shcol, Int nlev, Real* du, Real* dl, Real* d, Real* var)
+{
+
 }
 } // namespace shoc
 } // namespace scream

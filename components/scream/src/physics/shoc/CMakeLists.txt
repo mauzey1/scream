@@ -59,6 +59,8 @@ if (NOT CUDA_BUILD)
     shoc_compute_tmpi.cpp
     shoc_dp_inverse.cpp
     shoc_shoc_main.cpp
+    shoc_vd_shoc_decomp.cpp
+    shoc_vd_shoc_solve.cpp
   ) # SHOC ETI SRCS
 endif()
 
