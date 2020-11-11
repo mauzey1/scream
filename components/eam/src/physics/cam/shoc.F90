@@ -683,7 +683,7 @@ subroutine update_prognostics_implicit( &
   real(rtype), intent(inout) :: tke(shcol,nlev)
 
 ! LOCAL VARIABLES
-  integer     :: p
+  integer     :: p,i,k,which
   real(rtype) :: rdp_zt(shcol,nlev)
   real(rtype) :: tmpi(shcol,nlevi)
   real(rtype) :: tkh_zi(shcol,nlevi)
@@ -697,6 +697,19 @@ subroutine update_prognostics_implicit( &
   real(rtype) :: cc(shcol,nlev) ! subdiagonal for solver
   real(rtype) :: denom(shcol,nlev) ! denominator in solver
   real(rtype) :: ze(shcol,nlev)
+
+  real(rtype) :: du(shcol,nlev) ! superdiagonal for solver
+  real(rtype) :: dl(shcol,nlev) ! subdiagonal for solver
+  real(rtype) :: d(shcol,nlev) ! diagonal for solver
+
+real(rtype) :: max_rel_diff,rel_diff,old_val,new_val,denominator
+
+real(rtype) :: thetal_old(shcol,nlev)
+real(rtype) :: qw_old(shcol,nlev)
+real(rtype) :: tracer_old(shcol,nlev,num_tracer)
+real(rtype) :: u_wind_old(shcol,nlev)
+real(rtype) :: v_wind_old(shcol,nlev)
+real(rtype) :: tke_old(shcol,nlev)
 
   ! linearly interpolate tkh, tk, and air density onto the interface grids
   call linear_interp(zt_grid,zi_grid,tkh,tkh_zi,nlev,nlevi,shcol,0._rtype)
@@ -723,35 +736,146 @@ subroutine update_prognostics_implicit( &
                   wthl_sfc, wqw_sfc, wtke_sfc, wtracer_sfc, & 
                   thetal(:,nlev), qw(:,nlev), tke(:,nlev), tracer(:,nlev,:))
 
+
+do k=1,nlev
+  do i=1,shcol
+    thetal_old(i,k) = thetal(i,k)
+    qw_old(i,k) = qw(i,k)
+    u_wind_old(i,k) = u_wind(i,k)
+    v_wind_old(i,k) = v_wind(i,k)
+    tke_old(i,k) = tke(i,k)
+    do p=1,num_tracer
+      tracer_old(i,k,p) = tracer(i,k,p)
+    enddo
+  enddo
+enddo
+max_rel_diff = 0
+
   ! Call decomp for momentum variables
   call vd_shoc_decomp(shcol,nlev,nlevi,tk_zi,tmpi,rdp_zt,dtime,&
      ksrf,ca,cc,denom,ze)
+  call new_vd_shoc_decomp(shcol,nlev,nlevi,tk_zi,tmpi,rdp_zt,dtime,&
+     ksrf,du,dl,d)
 
   ! march u_wind one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,u_wind)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,u_wind_old)
+  call new_vd_shoc_solve(shcol,nlev,du,dl,d,u_wind)
+  do k=1,nlev
+    do i=1,shcol
+      old_val = u_wind_old(i,k)
+      new_val = u_wind(i,k)
+      denominator = 1
+      if (old_val .ne. 0) denominator = abs(old_val)
+      rel_diff = abs(old_val - new_val)/denominator
+      if (rel_diff > max_rel_diff) then
+        max_rel_diff = rel_diff
+        !write(*,*) max_rel_diff
+        which = 1
+      endif
+    enddo
+  enddo
 
   ! march v_wind one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,v_wind)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,v_wind_old)
+  call new_vd_shoc_solve(shcol,nlev,du,dl,d,v_wind)
+  do k=1,nlev
+    do i=1,shcol
+      old_val = v_wind_old(i,k)
+      new_val = v_wind(i,k)
+      denominator = 1
+      if (old_val .ne. 0) denominator = abs(old_val)
+      rel_diff = abs(old_val - new_val)/denominator
+      if (rel_diff > max_rel_diff) then
+        max_rel_diff = rel_diff
+        !write(*,*) max_rel_diff
+        which = 2
+      endif
+    enddo
+  enddo
 
 ! Call decomp for thermo variables
   flux_dummy(:) = 0._rtype ! fluxes applied explicitly, so zero fluxes out
                            ! for implicit solver decomposition
   call vd_shoc_decomp(shcol,nlev,nlevi,tkh_zi,tmpi,rdp_zt,dtime,&
      flux_dummy,ca,cc,denom,ze)
+  call new_vd_shoc_decomp(shcol,nlev,nlevi,tkh_zi,tmpi,rdp_zt,dtime,&
+     flux_dummy,du,dl,d)
 
   ! march temperature one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,thetal)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,thetal_old)
+  call new_vd_shoc_solve(shcol,nlev,du,dl,d,thetal)
+  do k=1,nlev
+    do i=1,shcol
+      old_val = thetal_old(i,k)
+      new_val = thetal(i,k)
+      denominator = 1
+      if (old_val .ne. 0) denominator = abs(old_val)
+      rel_diff = abs(old_val - new_val)/denominator
+      if (rel_diff > max_rel_diff) then
+        max_rel_diff = rel_diff
+        !write(*,*) max_rel_diff
+        which = 3
+      endif
+    enddo
+  enddo
 
   ! march total water one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,qw)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,qw_old)
+  call new_vd_shoc_solve(shcol,nlev,du,dl,d,qw)
+  do k=1,nlev
+    do i=1,shcol
+      old_val = qw_old(i,k)
+      new_val = qw(i,k)
+      denominator = 1
+      if (old_val .ne. 0) denominator = abs(old_val)
+      rel_diff = abs(old_val - new_val)/denominator
+      if (rel_diff > max_rel_diff) then
+        max_rel_diff = rel_diff
+        !write(*,*) max_rel_diff
+        which = 4
+      endif
+    enddo
+  enddo
 
   ! march tke one step forward using implicit solver
-  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,tke)
+  call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,tke_old)
+  call new_vd_shoc_solve(shcol,nlev,du,dl,d,tke)
+  do k=1,nlev
+    do i=1,shcol
+      old_val = tke_old(i,k)
+      new_val = tke(i,k)
+      denominator = 1
+      if (old_val .ne. 0) denominator = abs(old_val)
+      rel_diff = abs(old_val - new_val)/denominator
+      if (rel_diff > max_rel_diff) then
+        max_rel_diff = rel_diff
+        !write(*,*) max_rel_diff
+        which = 5
+      endif
+    enddo
+  enddo
 
   ! march tracers one step forward using implicit solver
   do p=1,num_tracer
-    call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,tracer(:shcol,:nlev,p))
+    call vd_shoc_solve(shcol,nlev,nlevi,ca,cc,denom,ze,tracer_old(:shcol,:nlev,p))
+    call new_vd_shoc_solve(shcol,nlev,du,dl,d,tracer(:shcol,:nlev,p))
+    do k=1,nlev
+      do i=1,shcol
+        old_val = tracer_old(i,k,p)
+        new_val = tracer(i,k,p)
+        denominator = 1
+        if (old_val .ne. 0) denominator = abs(old_val)
+        rel_diff = abs(old_val - new_val)/denominator
+        if (rel_diff > max_rel_diff) then
+          max_rel_diff = rel_diff
+          !write(*,*) max_rel_diff
+          which = 6
+        endif
+      enddo
+    enddo
   enddo
+
+write(*,*) max_rel_diff,which
 
   return
 
@@ -3357,6 +3481,8 @@ subroutine shoc_length(&
 
 end subroutine shoc_length
 
+
+
 !==============================================================
 ! Subroutine to determine superdiagonal and subdiagonal coeffs of
 ! the tridiagonal diffusion matrix.
@@ -3443,6 +3569,163 @@ subroutine vd_shoc_decomp( &
   return
 
 end subroutine vd_shoc_decomp
+
+
+!==============================================================
+! Subroutine to determine superdiagonal and subdiagonal coeffs of
+! the tridiagonal diffusion matrix.
+
+subroutine new_vd_shoc_decomp( &
+         shcol,nlev,nlevi,&          ! Input
+         kv_term,tmpi,rdp_zt,dtime,& ! Input
+         flux, &                     ! Input
+         du,dl,d)             ! Output
+
+  implicit none
+
+! INPUT VARIABLES
+  ! number of columns
+  integer, intent(in) :: shcol
+  ! number of mid-point levels
+  integer, intent(in) :: nlev
+  ! number of levels on the interface
+  integer, intent(in) :: nlevi
+
+  ! SHOC timestep [s]
+  real(rtype), intent(in) :: dtime
+  ! diffusion coefficent [m2/s]
+  real(rtype), intent(in) :: kv_term(shcol,nlevi)
+  ! dt*(g*rho)**2/dp at interfaces
+  real(rtype), intent(in) :: tmpi(shcol,nlevi)
+  ! 1/dp
+  real(rtype), intent(in) :: rdp_zt(shcol,nlev)
+  ! surface flux [varies]
+  real(rtype), intent(in) :: flux(shcol)
+
+! OUTPUT VARIABLES
+  ! superdiagonal
+  real(rtype), intent(out) :: du(shcol,nlev)
+  ! subdiagonal
+  real(rtype), intent(out) :: dl(shcol,nlev)
+  ! diagonal
+  real(rtype), intent(out) :: d(shcol,nlev)
+
+! LOCAL VARIABLES
+  integer :: i, k
+
+  ! Determine superdiagonal (du(k)) and subdiagonal (dl(k)) coeffs of the
+  ! tridiagonal diffusion matrix.
+  do k=nlev-1,1,-1
+    do i=1,shcol
+      du(i,k) = -1._rtype * kv_term(i,k+1) * tmpi(i,k+1) * rdp_zt(i,k)
+      dl(i,k+1) = -1._rtype * kv_term(i,k+1) * tmpi(i,k+1) * rdp_zt(i,k+1)
+    enddo
+  enddo
+
+  ! The bottom element of the upper diagonal (du) and the top element of
+  ! the lower diagonal (dl) is set to zero (not included in linear system).
+  du(:,nlev) = 0._rtype
+  dl(:,1) = 0._rtype
+
+  ! The diagonal elements are a combination of du and dl (d=1-du-dl). Surface
+  ! fluxes are applied explicitly in the diagonal at the top level.
+  do i=1,shcol
+    d(i,nlev) = 1._rtype - dl(i,nlev) + flux(i)*dtime*ggr*rdp_zt(i,nlev)
+  enddo
+  do k=nlev-1,2,-1
+    do i=1,shcol
+      d(i,k) = 1._rtype - du(i,k) - dl(i,k)
+    enddo
+  enddo
+  do i=1,shcol
+    d(i,1) = 1._rtype - du(i,1)
+  enddo
+
+  return
+
+end subroutine new_vd_shoc_decomp
+
+
+
+!==============================================================
+! Subroutine to solve the implicit vertical diffsion equation
+! with zero flux boundary conditions.  Actual surface fluxes
+! should be applied explicitly.  Procedure for solution of the
+! implicit equation follows Richtmeyer and Morton (1967, pp 198-200).
+! The equation solved is
+!
+!   du(k)*q(k+1) + d(k)*q(k) - du(k)*q(k-1) = b(k),
+!
+! where b(k) is the input profile and q(k) is the output profile. The
+! solution is found using the Thomas algorithm for tridiagonal systems.
+!
+! Note that the same routine is used for temperature, momentum and
+! tracers.
+! ---------------------------------------------------------------
+
+subroutine new_vd_shoc_solve(&
+         shcol,nlev,&   ! Input
+         du,dl,d,&     ! Input
+         var)                 ! Input/Output
+
+  implicit none
+
+! INPUT VARIABLES
+  ! number of columns
+  integer, intent(in) :: shcol
+  ! number of mid-point levels
+  integer, intent(in) :: nlev
+  ! superdiagonal
+  real(rtype), intent(in) :: du(shcol,nlev)
+  ! subdiagonal
+  real(rtype), intent(in) :: dl(shcol,nlev)
+  ! diagonal
+  real(rtype), intent(in) :: d(shcol,nlev)
+
+! IN/OUT VARIABLES
+  real(rtype), intent(inout) :: var(shcol,nlev)
+
+! LOCAL VARIABLES
+  integer :: i, k
+  ! Temporary variables for tridiag solve
+  real(rtype) :: temp_dl(shcol,nlev)
+  real(rtype) :: temp_d(shcol,nlev)
+
+  ! Copy over temporary variables
+  do k=1,nlev
+    do i=1,shcol
+      temp_dl(i,k) = dl(i,k)
+      temp_d (i,k) = d (i,k)
+    enddo
+  enddo
+
+  ! Compute Thomas factorization
+  do k=2,nlev
+    do i=1,shcol
+      temp_dl(i,k) = temp_dl(i,k)/temp_d(i,k-1)
+      temp_d (i,k) = temp_d (i,k) - temp_dl(i,k)*du(i,k-1)
+    enddo
+  enddo
+
+  ! Solve using Thomas algorithm
+  do k=2,nlev
+    do i=1,shcol
+      var(i,k) = var(i,k) - temp_dl(i,k)*var(i,k-1)
+    enddo
+  enddo
+  do i=1,shcol
+    var(i,nlev) = var(i,nlev)/temp_d(i,nlev)
+  enddo
+  do k=nlev,2,-1
+    do i=1,shcol
+      var(i,k-1) = (var(i,k-1) - du(i,k-1)*var(i,k))/temp_d(i,k-1)
+    enddo
+  enddo
+
+  return
+
+end subroutine new_vd_shoc_solve
+
 
 !==============================================================
 ! Subroutine to solve the implicit vertical diffsion equation
