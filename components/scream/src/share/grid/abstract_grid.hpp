@@ -45,9 +45,6 @@ public:
   // in the native 2d layout
   using lid_to_idx_map_type = kokkos_types::view<int**>;
 
-  // The dofs lat-lon coordinates
-  using coords_type = kokkos_types::view_2d<Real>;
-
   // Constructor(s) & Destructor
   AbstractGrid (const GridType type,
                 const std::string& name)
@@ -91,9 +88,6 @@ public:
   // the i-th dof in the native dof layout.
   const lid_to_idx_map_type& get_lid_to_idx_map () const { return m_lid_to_idx; }
 
-  // Get dofs coordinates
-  const coords_type& get_dofs_coords () const { return m_dofs_coords; }
-
 protected:
 
   // The grid name and type
@@ -110,9 +104,6 @@ protected:
 
   // The map lid->idx
   lid_to_idx_map_type   m_lid_to_idx;
-
-  // The lat-lon coordinates of each dof
-  coords_type           m_dofs_coords;
 };
 
 } // namespace scream

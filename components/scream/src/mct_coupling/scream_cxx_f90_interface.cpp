@@ -14,7 +14,7 @@
 
 #include "mct_coupling/ScreamContext.hpp"
 #include "share/grid/user_provided_grids_manager.hpp"
-#include "share/grid/se_grid.hpp"
+#include "share/grid/point_grid.hpp"
 #include "share/scream_session.hpp"
 #include "share/scream_types.hpp"
 
@@ -193,14 +193,33 @@ void scream_get_local_cols_gids (void* const ptr) {
   });
 }
 
-// Return the lat/lon coords of all physics columns
+// Retrieve the lat/lon coords of all physics FV dofs
 void scream_get_cols_latlon_deg (void* const ptr) {
   fpe_guard_wrapper([&]() {
-    auto latlon_f = reinterpret_cast<Real* const>(ptr);
+    auto latlon_ptr = reinterpret_cast<Real* const>(ptr);
     const auto& ad = get_ad();
     const auto& grid = ad.get_grids_manager()->get_reference_grid();
-    const auto& latlon_d = grid->get_dofs_coords();
+    auto pg = std::dynamic_pointer_cast<scream::PointGrid>(grid);
+    auto latlon_cxx = pg->get_dofs_coords();
 
+    using latlon_f90_type = ekat::Unmanaged<decltype(latlon_cxx)::HostMirror>;
+    latlon_f90_type latlon_f90 (latlon_ptr, latlon_cxx.extent(0), latlon_cxx.extent(1));
+    Kokkos::deep_copy(latlon_f90, latlon_cxx);
+  });
+}
+
+// Retrieve the area of all physics FV dofs
+void scream_get_cols_area (void* const ptr) {
+  fpe_guard_wrapper([&]() {
+    auto area_ptr = reinterpret_cast<double* const>(ptr);
+    const auto& ad = get_ad();
+    const auto& grid = ad.get_grids_manager()->get_reference_grid();
+    auto pg = std::dynamic_pointer_cast<scream::PointGrid>(grid);
+    auto area_cxx = pg->get_dofs_area();
+
+    using area_f90_type = ekat::Unmanaged<decltype(area_cxx)::HostMirror>;
+    area_f90_type area_f90 (area_ptr, area_cxx.extent_int(0));
+    Kokkos::deep_copy(area_f90,area_cxx);
   });
 }
 

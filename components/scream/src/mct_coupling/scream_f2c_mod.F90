@@ -21,6 +21,22 @@ interface
     character(kind=c_char), target, intent(in) :: yaml_fname(*)
   end subroutine scream_init
 
+  subroutine scream_get_cols_latlon_deg (coords) bind(c)
+    use iso_c_binding, only: c_ptr
+    !
+    ! arguments
+    !
+    type(c_ptr), intent(in) :: coords
+  end subroutine scream_get_cols_latlon_deg
+
+  subroutine scream_get_cols_area (area) bind(c)
+    use iso_c_binding, only: c_ptr
+    !
+    ! arguments
+    !
+    type(c_ptr), intent(in) :: area
+  end subroutine scream_get_cols_area
+
   ! This subroutine initializes the C++ structures in the AD that are
   ! responsible to handle import/export operation from/into the component
   ! coupler surface fluxes/state structures

@@ -1,6 +1,8 @@
 #ifndef SCREAM_HOMME_INTERFACE_HPP
 #define SCREAM_HOMME_INTERFACE_HPP
 
+#include "share/grid/abstract_grid.hpp"
+
 #include "Hommexx_Session.hpp"
 #include "Context.hpp"
 #include "mpi/Comm.hpp"
@@ -41,8 +43,9 @@ void prim_finalize_f90 ();
 
 // Grids specs
 void get_elem_cols_gids_f90 (long* const& gids);
-void get_cols_gids_f90 (long* const& gids, const bool& owned_only);
-void get_cols_specs_f90 (long* const& gids, int* const& elgp, const bool& owned_only);
+void get_cols_gids_f90 (AbstractGrid::gid_type* const& gids, const bool& owned_only);
+void get_cols_indices_f90 (AbstractGrid::gid_type* const& gids, int* const& elgp, const bool& owned_only);
+void get_cols_geo_specs_f90 (double* const& coords, double* const& area);
 int get_nlev_f90 ();
 int get_np_f90 ();
 int get_num_owned_columns_f90 ();

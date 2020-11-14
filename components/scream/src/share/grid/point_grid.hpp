@@ -18,12 +18,17 @@ namespace scream
  * In particular, the map lid->idx is an identity, and the native
  * layout has only one tag: Column.
  *
- * This grid is typical of Physics parametrizations
+ * This grid is typical of Physics parametrizations, and is also used
+ * to interface to the component coupler.
  */
 
 class PointGrid : public AbstractGrid
 {
 public:
+
+  // The dofs lat-lon coordinates, and the area associated with a dof
+  using geo_view_2d = kokkos_types::view_2d<double>;
+  using geo_view_1d = kokkos_types::view_1d<double>;
 
   PointGrid (const std::string& grid_name,
              const dofs_list_type& dofs_gids,
@@ -34,6 +39,19 @@ public:
   // Native layout of a dof. This is the natural way to index a dof in the grid.
   // E.g., for a 2d structured grid, this could be a set of 2 indices.
   FieldLayout get_native_dof_layout () const override;
+
+  // Get dofs geo info
+  const geo_view_1d& get_dofs_area   () const { return m_dofs_area; }
+  const geo_view_2d& get_dofs_coords () const { return m_dofs_coords; }
+
+  void set_geometry_data (const geo_view_2d& dofs_coords,
+                          const geo_view_1d& dofs_area);
+
+private:
+
+  // Geometric info
+  geo_view_2d      m_dofs_coords;
+  geo_view_1d      m_dofs_area;
 };
 
 // Create a point grid, with linear range of gids, evenly partitioned

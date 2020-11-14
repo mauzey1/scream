@@ -25,7 +25,7 @@ macro (CreateScorpioTarget CREATE_FLIB)
     # Create the interface library that scream targets can link to
     add_library(scream_pioc UNKNOWN IMPORTED GLOBAL)
     set_target_properties(scream_pioc PROPERTIES IMPORTED_LOCATION "${SCORPIO_C_LIB}")
-    target_link_libraries(scream_pioc INTERFACE "scream_gptl;${netcdf_c_lib}")
+    target_link_libraries(scream_pioc INTERFACE "${netcdf_c_lib}")
     set_target_properties(scream_pioc PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${INSTALL_SHAREDPATH}/include)
     if (pnetcdf_lib)
       target_link_libraries(scream_pioc INTERFACE "${pnetcdf_lib}")

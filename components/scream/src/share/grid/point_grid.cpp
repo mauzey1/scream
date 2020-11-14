@@ -30,6 +30,22 @@ PointGrid::get_native_dof_layout () const
   return FieldLayout({COL},{m_num_local_dofs});
 }
 
+void PointGrid::
+set_geometry_data (const geo_view_2d& dofs_coords,
+                   const geo_view_1d& dofs_area)
+{
+  // Sanity checks
+  EKAT_REQUIRE_MSG (dofs_coords.extent_int(0)==2,
+                    "Error! Input dofs coords has wrong dimensions.\n");
+  EKAT_REQUIRE_MSG (dofs_coords.extent_int(1)==m_num_local_dofs,
+                    "Error! Input dofs coords has wrong dimensions.\n");
+  EKAT_REQUIRE_MSG (dofs_area.extent_int(0)==m_num_local_dofs,
+                    "Error! Input dofs area has wrong dimensions.\n");
+
+  m_dofs_coords = dofs_coords;
+  m_dofs_area   = dofs_area;
+}
+
 PointGrid
 create_point_grid (const std::string& grid_name,
                    const int num_global_cols,

@@ -62,17 +62,17 @@ set (SCREAM_LIBS
 )
 
 # In CIME builds, create imported targets for scorpio and csm_share
-include (tpls/Scorpio)
-CreateScorpioTarget(TRUE) # Note: the input is whether we want FLIB too. We want/need both, so look for both
-include (tpls/CsmShare)
-CreateCsmShareTarget()
+# include (tpls/Scorpio)
+# CreateScorpioTarget(TRUE) # Note: the input is whether we want FLIB too. We want/need both, so look for both
+# include (tpls/CsmShare)
+# CreateCsmShareTarget()
 include (tpls/Mct)
 CreateMctTarget()
 
 set (SCREAM_CIME_LIBS
-     scream_pioc
-     scream_piof
-     scream_csm_share
+     # scream_pioc
+     # scream_piof
+     # scream_csm_share
      scream_mct
 )
 

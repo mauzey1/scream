@@ -283,10 +283,12 @@ CONTAINS
   end subroutine atm_Set_gsMap_mct
 
   subroutine atm_domain_mct( lsize, gsMap_atm, dom_atm )
-    use iso_c_binding, only: c_loc
-    use mct_mod,       only: mct_gGrid_init
-    use seq_flds_mod,  only: seq_flds_dom_coord, seq_flds_dom_other
-    use shr_const_mod, only: SHR_CONST_PI
+    use iso_c_binding,  only: c_loc
+    use mct_mod,        only: mct_gGrid_init, mct_gGrid_importIAttr, mct_gGrid_importRAttr, &
+                              mct_gsMap_orderedPoints
+    use seq_flds_mod,   only: seq_flds_dom_coord, seq_flds_dom_other
+    use shr_const_mod,  only: SHR_CONST_PI
+    use scream_f2c_mod, only: scream_get_cols_latlon_deg, scream_get_cols_area
 
     !-------------------------------------------------------------------
     !
@@ -299,13 +301,14 @@ CONTAINS
     ! Local Variables
     !
     integer  :: n,i,c,ncols           ! indices	
-    real(r8), allocatable, target  :: tmp_data(:)     ! temporary
-    integer , pointer  :: idata(:)    ! temporary
+    real(r8), allocatable, target :: data2d(:,:)     ! temporary
+    real(r8), pointer :: data1d(:)
+    integer , pointer :: idata(:)    ! temporary
 
     real(r8), parameter:: radtodeg = 180.0_r8 / SHR_CONST_PI
     !-------------------------------------------------------------------
 
-    allocate(tmp_data(2*lsize))
+    allocate(data2d(lsize,2))
 
     ! Initialize mct atm domain
     call mct_gGrid_init( GGrid=dom_atm, CoordChars=trim(seq_flds_dom_coord), &
@@ -329,21 +332,23 @@ CONTAINS
     ! call mct_gGrid_importRAttr(dom_atm,"frac" ,data,lsize)
 
     ! Fill in correct values for domain components
-    call scream_get_cols_latlon_deg(c_loc(tmp_data))
-    call mct_gGrid_importRAttr(dom_atm,"lat",tmp_data(1::2),lsize) 
-    call mct_gGrid_importRAttr(dom_atm,"lon",tmp_data(2::2),lsize) 
+    call scream_get_cols_latlon_deg(c_loc(data2d))
+    data1d => data2d(:,1)
+    call mct_gGrid_importRAttr(dom_atm,"lat",data1d,lsize) 
+    data1d => data2d(:,2)
+    call mct_gGrid_importRAttr(dom_atm,"lon",data1d,lsize) 
 
-    call scream_get_cols_area(c_loc(tmp_data))
-    call mct_gGrid_importRAttr(dom_atm,"area",tmp_data,lsize) 
+    call scream_get_cols_area(c_loc(data1d))
+    call mct_gGrid_importRAttr(dom_atm,"area",data1d,lsize) 
 
     ! Mask and frac are both exactly 1
-    tmp_data(:) = 1.0
-    call mct_gGrid_importRAttr(dom_atm,"mask",tmp_data,lsize) 
-    call mct_gGrid_importRAttr(dom_atm,"frac",tmp_data,lsize) 
+    data1d = 1.0
+    call mct_gGrid_importRAttr(dom_atm,"mask",data1d,lsize) 
+    call mct_gGrid_importRAttr(dom_atm,"frac",data1d,lsize) 
 
     ! Aream is computed by mct, so give invalid initial value
-    tmp_data(:) = -9999.0_R8
-    call mct_gGrid_importRAttr(dom_atm,"aream",tmp_data,lsize) 
+    data1d = -9999.0_R8
+    call mct_gGrid_importRAttr(dom_atm,"aream",data1d,lsize) 
   end subroutine atm_domain_mct
 
 end module atm_comp_mct

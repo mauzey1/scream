@@ -37,6 +37,7 @@ void PhysicsOnlyGridsManager::build_grid (const std::string& grid_name) {
   const int num_vertical_lev = phys_only_gm_params.get<int>("Number of vertical levels");
 
   auto grid = std::make_shared<PointGrid>(create_point_grid("Physics",num_global_cols,num_vertical_lev,m_comm));
+
   m_grids["Physics Only"] = m_grids["Physics"] = grid;
 
   if (grid_name==m_params.get<std::string>("Reference Grid")) {

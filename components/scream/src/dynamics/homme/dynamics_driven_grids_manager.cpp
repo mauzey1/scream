@@ -71,7 +71,7 @@ void DynamicsDrivenGridsManager::build_dynamics_grid () {
     auto h_dofs = Kokkos::create_mirror_view(dofs);
 
     // Get (ie,igp,jgp,gid) data for each dof
-    get_cols_specs_f90(h_dofs.data(),h_lids_to_elgpgp.data(),false);
+    get_cols_indices_f90(h_dofs.data(),h_lids_to_elgpgp.data(),false);
 
     Kokkos::deep_copy(dofs,h_dofs);
     Kokkos::deep_copy(lids_to_elgpgp,h_lids_to_elgpgp);
@@ -100,6 +100,18 @@ void DynamicsDrivenGridsManager::build_physics_grid () {
     Kokkos::deep_copy(dofs,h_dofs);
 
     auto phys_grid = std::make_shared<PointGrid>("Physics",dofs,nlev);
+
+    // Get dofs area/coords
+    PointGrid::geo_view_1d d_area("",num_cols);
+    PointGrid::geo_view_2d d_coords("",2,num_cols);
+    auto h_area   = Kokkos::create_mirror_view(d_area);
+    auto h_coords = Kokkos::create_mirror_view(d_coords);
+
+    get_cols_geo_specs_f90(h_coords.data(), h_area.data());
+    Kokkos::deep_copy(d_area, h_area);
+    Kokkos::deep_copy(d_coords, h_coords);
+
+    phys_grid->set_geometry_data(d_coords, d_area);
 
     // Set the grid in the map
     m_grids["Physics"] = phys_grid;

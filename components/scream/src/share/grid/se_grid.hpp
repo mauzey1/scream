@@ -27,6 +27,7 @@ public:
   // Set the dofs gids as well as their coordinates (ie,igp,jgp) in the grid
   void set_dofs (const dofs_list_type&      dofs,
                  const lid_to_idx_map_type& lid_to_elgpgp);
+
 protected:
 
   // SE dims
