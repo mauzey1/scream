@@ -2593,13 +2593,16 @@ void sfc_fluxes_f(Int shcol, Int num_tracer, Real dtime, Real* rho_zi_sfc, Real*
   using ExeSpace   = typename KT::ExeSpace;
   using MemberType = typename SHF::MemberType;
 
-  Kokkos::Array<view_1d, 8> temp_1d_d;
-  Kokkos::Array<view_2d, 2> temp_2d_d;
-  Kokkos::Array<const Real*, 5> ptr_array_1d = {rho_zi_sfc, rdp_zt_sfc, wthl_sfc, wqw_sfc,
+  static constexpr Int num_1d_arrays = 8;
+  static constexpr Int num_2d_arrays = 2;
+
+  Kokkos::Array<view_1d, num_1d_arrays> temp_1d_d;
+  Kokkos::Array<view_2d, num_2d_arrays> temp_2d_d;
+  Kokkos::Array<const Real*, num_1d_arrays> ptr_array_1d = {rho_zi_sfc, rdp_zt_sfc, wthl_sfc, wqw_sfc,
                                                 wtke_sfc,   thetal,     qw,       tke};
-  Kokkos::Array<int, 5> dim1_sizes = {shcol,  shcol};
-  Kokkos::Array<int, 5> dim2_sizes = {num_tracer, num_tracer};
-  Kokkos::Array<const Real*, 5> ptr_array_2d = {wtracer_sfc, wtracer};
+  Kokkos::Array<int, num_2d_arrays> dim1_sizes = {shcol,  shcol};
+  Kokkos::Array<int, num_2d_arrays> dim2_sizes = {num_tracer, num_tracer};
+  Kokkos::Array<const Real*, num_2d_arrays> ptr_array_2d = {wtracer_sfc, wtracer};
 
   // Sync to device
   ekat::host_to_device(ptr_array_1d, shcol, temp_1d_d);
@@ -2650,7 +2653,7 @@ void sfc_fluxes_f(Int shcol, Int num_tracer, Real dtime, Real* rho_zi_sfc, Real*
   ekat::device_to_host<int,3>({thetal, qw, tke}, shcol, inout_views_1d);
 
   Kokkos::Array<view_2d, 1> inout_views_2d = {wtracer_d};
-  ekat::device_to_host<int,1>({wtracer}, shcol, inout_views_2d);
+  ekat::device_to_host<int,1>({wtracer}, shcol, num_tracer, inout_views_2d, true);
 }
 } // namespace shoc
 } // namespace scream

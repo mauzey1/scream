@@ -343,7 +343,7 @@ struct Functions
     const uview_1d<const Spack>& wtracer_sfc,
     const uview_1d<Spack>&       rdp_zt,
     const uview_1d<Spack>&       tmpi,
-    const uview_2d<Spack>&       tkh_zi,
+    const uview_1d<Spack>&       tkh_zi,
     const uview_1d<Spack>&       tk_zi,
     const uview_1d<Spack>&       rho_zi,
     const uview_1d<Spack>&       thetal,
