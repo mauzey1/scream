@@ -47,6 +47,11 @@ void Functions<S,D>::update_prognostics_implicit(
   const auto nlev_packs  = ekat::npack<Spack>(nlev);
   const auto nlevi_packs = ekat::npack<Spack>(nlevi);
 
+  const auto last_nlev_pack = nlev-1;
+  const auto last_nlev_indx = (nlev-1)%Spack::n;
+  const auto last_nlevi_pack = nlevi-1;
+  const auto last_nlevi_indx = (nlevi-1)%Spack::n;
+
   // linearly interpolate tkh, tk, and air density onto the interface grids
   linear_interp(team,zt_grid,zi_grid,tkh,tkh_zi,nlev,nlevi,0);
   linear_interp(team,zt_grid,zi_grid,tk,tk_zi,nlev,nlevi,0);
@@ -60,37 +65,49 @@ void Functions<S,D>::update_prognostics_implicit(
   dp_inverse(team, nlev, rho_zt, dz_zt, rdp_zt);
 
   // compute terms needed for the implicit surface stress (ksrf)
-  Scalar ksrf;
+  // and tke flux calc (wtke_sfc)
+  Scalar ksrf, wtke_sfc;
   {
-    // Minimum wind speed for ksrfturb computation [ m/s ]
     const auto wsmin = 1;
-
-    // Minimum surface drag coefficient  [ kg/s/m^2 ]
     const auto ksrfmin = 1e-4;
+    const auto ustarmin = 0.01;
 
-    const auto rho = rho_zi(nlevi_packs-1)[(nlevi-1)%Spack::n];
+    const auto rho = rho_zi(last_nlevi_pack)[last_nlevi_indx];
     const auto uw = uw_sfc;
     const auto vw = vw_sfc;
 
     const auto taux = rho*uw;
     const auto tauy = rho*vw;
 
-    const auto u_wind_sfc = u_wind(nlev_packs-1)[(nlev-1)%Spack::n];
-    const auto v_wind_sfc = v_wind(nlev_packs-1)[(nlev-1)%Spack::n];
+    const auto u_wind_sfc = u_wind(last_nlev_pack)[last_nlev_indx];
+    const auto v_wind_sfc = v_wind(last_nlev_pack)[last_nlev_indx];
 
-    // compute the wind speed
-    const auto ws = std::max(std::sqrt((u_wind_sfc*u_wind_sfc) + v_wind_sfc*v_wind_sfc), wsmin);
+    const auto ws = std::max(std::sqrt((u_wind_sfc*u_wind_sfc) + v_wind_sfc*v_wind_sfc), sp(wsmin));
     const auto tau = std::sqrt(taux*taux + tauy*tauy);
-    ksrf = std::max(tau/ws, ksrfmin);
+    ksrf = std::max(tau/ws, sp(ksrfmin));
+
+    const auto ustar = std::max(std::sqrt(std::sqrt(uw*uw + vw*vw)), sp(ustarmin));
+    wtke_sfc = ustar*ustar*ustar;
   }
 
-  // compute term needed for tke flux calc (wtke_sfc)
-//  wtke_sfc(1:shcol) = tke_srf_flux_term(shcol, uw_sfc, vw_sfc)
+  // compute surface fluxes for liq. potential temp, water and tke
+  {
+    const auto rho_zi_sfc = rho_zi(last_nlevi_pack)[last_nlevi_indx];
+    const auto rdp_zt_sfc = rdp_zt(last_nlev_pack)[last_nlev_indx];
+    auto thetal_sfc = thetal(last_nlev_pack)[last_nlev_indx];
+    auto qw_sfc = qw(last_nlev_pack)[last_nlev_indx];
+    auto tke_sfc = tke(last_nlev_pack)[last_nlev_indx];
+    auto tracer_sfc = Kokkos::subview(tracer, nlev-1, Kokkos::ALL());
 
-//  ! compute surface fluxes for liq. potential temp, water and tke
-//  call sfc_fluxes(shcol, num_tracer, dtime, rho_zi(:,nlevi), rdp_zt(:,nlev), &
-//                  wthl_sfc, wqw_sfc, wtke_sfc, wtracer_sfc, &
-//                  thetal(:,nlev), qw(:,nlev), tke(:,nlev), tracer(:,nlev,:))
+    sfc_fluxes(team, num_tracer, dtime, rho_zi_sfc, rdp_zt_sfc,
+               wthl_sfc, wqw_sfc, wtke_sfc, wtracer_sfc,
+               thetal_sfc, qw_sfc, tke_sfc, tracer_sfc);
+
+    thetal(last_nlev_pack)[last_nlev_indx] = thetal_sfc;
+    qw(last_nlev_pack)[last_nlev_indx] = qw_sfc;
+    tke(last_nlev_pack)[last_nlev_indx] = tke_sfc;
+  }
+
 
 
 }

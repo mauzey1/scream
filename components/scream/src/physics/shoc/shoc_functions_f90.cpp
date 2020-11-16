@@ -2599,7 +2599,7 @@ void sfc_fluxes_f(Int shcol, Int num_tracer, Real dtime, Real* rho_zi_sfc, Real*
   Kokkos::Array<view_1d, num_1d_arrays> temp_1d_d;
   Kokkos::Array<view_2d, num_2d_arrays> temp_2d_d;
   Kokkos::Array<const Real*, num_1d_arrays> ptr_array_1d = {rho_zi_sfc, rdp_zt_sfc, wthl_sfc, wqw_sfc,
-                                                wtke_sfc,   thetal,     qw,       tke};
+                                                            wtke_sfc,   thetal,     qw,       tke};
   Kokkos::Array<int, num_2d_arrays> dim1_sizes = {shcol,  shcol};
   Kokkos::Array<int, num_2d_arrays> dim2_sizes = {num_tracer, num_tracer};
   Kokkos::Array<const Real*, num_2d_arrays> ptr_array_2d = {wtracer_sfc, wtracer};
