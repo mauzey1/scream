@@ -61,6 +61,7 @@ if (NOT CUDA_BUILD)
     shoc_shoc_main.cpp
     shoc_vd_shoc_decomp.cpp
     shoc_vd_shoc_solve.cpp
+    shoc_sfc_fluxes.cpp
   ) # SHOC ETI SRCS
 endif()
 

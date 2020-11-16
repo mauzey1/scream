@@ -1044,6 +1044,9 @@ void shoc_main_f(Int shcol, Int nlev, Int nlevi, Real dtime, Int nadv, Real* hos
 void vd_shoc_decomp_f(Int shcol, Int nlev, Int nlevi, Real* kv_term, Real* tmpi, Real* rdp_zt, Real dtime,
                       Real* flux, Real* du, Real* dl, Real* d);
 void vd_shoc_solve_f(Int shcol, Int nlev, Real* du, Real* dl, Real* d, Real* var);
+void sfc_fluxes_f(Int shcol, Int num_tracer, Real dtime, Real* rho_zi_sfc, Real* rdp_zt_sfc, Real* wthl_sfc,
+                  Real* wqw_sfc, Real* wtke_sfc, Real* wtracer_sfc, Real* thetal, Real* qw, Real* tke,
+                  Real* wtracer);
 } // end _f function decls
 
 }  // namespace shoc

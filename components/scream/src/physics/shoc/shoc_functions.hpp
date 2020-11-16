@@ -441,6 +441,22 @@ struct Functions
   KOKKOS_FUNCTION
   static void vd_shoc_solve(const Int& shcol, const Int& nlev, const uview_1d<const Spack>& du, const uview_1d<const Spack>& dl, const uview_1d<const Spack>& d, const uview_1d<Spack>& var);
 
+  KOKKOS_FUNCTION
+  static void sfc_fluxes(
+    const MemberType&            team,
+    const Int&                   num_tracer,
+    const Scalar&                dtime,
+    const Scalar&                rho_zi_sfc,
+    const Scalar&                rdp_zt_sfc,
+    const Scalar&                wthl_sfc,
+    const Scalar&                wqw_sfc,
+    const Scalar&                wtke_sfc,
+    const uview_1d<const Spack>& wtracer_sfc,
+    Scalar&                      thetal,
+    Scalar&                      qw,
+    Scalar&                      tke,
+    const uview_1d<Spack>&       wtracer);
+
 }; // struct Functions
 
 } // namespace shoc
@@ -482,6 +498,7 @@ struct Functions
 # include "shoc_shoc_main_impl.hpp"
 # include "shoc_vd_shoc_decomp_impl.hpp"
 # include "shoc_vd_shoc_solve_impl.hpp"
+# include "shoc_sfc_fluxes_impl.hpp"
 #endif // KOKKOS_ENABLE_CUDA
 
 #endif

@@ -2577,5 +2577,80 @@ void vd_shoc_solve_f(Int shcol, Int nlev, Real* du, Real* dl, Real* d, Real* var
 {
 
 }
+
+void sfc_fluxes_f(Int shcol, Int num_tracer, Real dtime, Real* rho_zi_sfc, Real* rdp_zt_sfc, Real* wthl_sfc,
+                  Real* wqw_sfc, Real* wtke_sfc, Real* wtracer_sfc, Real* thetal, Real* qw, Real* tke,
+                  Real* wtracer)
+{
+  using SHF = Functions<Real, DefaultDevice>;
+
+  using Scalar     = typename SHF::Scalar;
+  using Spack      = typename SHF::Spack;
+  using Pack1d     = typename ekat::Pack<Real,1>;
+  using view_1d    = typename SHF::view_1d<Pack1d>;
+  using view_2d    = typename SHF::view_2d<Spack>;
+  using KT         = typename SHF::KT;
+  using ExeSpace   = typename KT::ExeSpace;
+  using MemberType = typename SHF::MemberType;
+
+  Kokkos::Array<view_1d, 8> temp_1d_d;
+  Kokkos::Array<view_2d, 2> temp_2d_d;
+  Kokkos::Array<const Real*, 5> ptr_array_1d = {rho_zi_sfc, rdp_zt_sfc, wthl_sfc, wqw_sfc,
+                                                wtke_sfc,   thetal,     qw,       tke};
+  Kokkos::Array<int, 5> dim1_sizes = {shcol,  shcol};
+  Kokkos::Array<int, 5> dim2_sizes = {num_tracer, num_tracer};
+  Kokkos::Array<const Real*, 5> ptr_array_2d = {wtracer_sfc, wtracer};
+
+  // Sync to device
+  ekat::host_to_device(ptr_array_1d, shcol, temp_1d_d);
+  ekat::host_to_device(ptr_array_2d, dim1_sizes, dim2_sizes, temp_2d_d, true);
+
+
+  view_1d
+    rho_zi_sfc_d(temp_1d_d[0]),
+    rdp_zt_sfc_d(temp_1d_d[1]),
+    wthl_sfc_d(temp_1d_d[2]),
+    wqw_sfc_d(temp_1d_d[3]),
+    wtke_sfc_d(temp_1d_d[4]),
+    thetal_d(temp_1d_d[5]),
+    qw_d(temp_1d_d[6]),
+    tke_d(temp_1d_d[7]);
+
+  view_2d
+    wtracer_sfc_d(temp_2d_d[0]),
+    wtracer_d(temp_2d_d[1]);
+
+  const Int nk_pack = ekat::npack<Spack>(num_tracer);
+  const auto policy = ekat::ExeSpaceUtils<ExeSpace>::get_default_team_policy(shcol, nk_pack);
+  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const MemberType& team) {
+    const Int i = team.league_rank();
+
+    const Scalar rho_zi_sfc_s{rho_zi_sfc_d(i)[0]};
+    const Scalar rdp_zt_sfc_s{rdp_zt_sfc_d(i)[0]};
+    const Scalar wthl_sfc_s{wthl_sfc_d(i)[0]};
+    const Scalar wqw_sfc_s{wqw_sfc_d(i)[0]};
+    const Scalar wtke_sfc_s{wtke_sfc_d(i)[0]};
+    Scalar thetal_s{thetal_d(i)[0]};
+    Scalar qw_s{qw_d(i)[0]};
+    Scalar tke_s{tke_d(i)[0]};
+
+    const auto wtracer_sfc_s = ekat::subview(wtracer_sfc_d, i);
+    const auto wtracer_s = ekat::subview(wtracer_d, i);
+
+    SHF::sfc_fluxes(team, num_tracer, dtime, rho_zi_sfc_s, rdp_zt_sfc_s, wthl_sfc_s, wqw_sfc_s,
+                    wtke_sfc_s, wtracer_sfc_s, thetal_s, qw_s, tke_s, wtracer_s);
+
+    thetal_d(i)[0] = thetal_s;
+    qw_d(i)[0] = qw_s;
+    tke_d(i)[0] = tke_s;
+  });
+
+  // Sync back to host
+  Kokkos::Array<view_1d, 3> inout_views_1d = {thetal_d, qw_d, tke_d};
+  ekat::device_to_host<int,3>({thetal, qw, tke}, shcol, inout_views_1d);
+
+  Kokkos::Array<view_2d, 1> inout_views_2d = {wtracer_d};
+  ekat::device_to_host<int,1>({wtracer}, shcol, inout_views_2d);
+}
 } // namespace shoc
 } // namespace scream
