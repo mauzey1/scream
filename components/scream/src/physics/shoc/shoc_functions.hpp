@@ -52,6 +52,8 @@ struct Functions
   using view_1d = typename KT::template view_1d<S>;
   template <typename S>
   using view_2d = typename KT::template view_2d<S>;
+  template <typename S>
+  using view_3d = typename KT::template view_3d<S>;
 
   template <typename S, int N>
   using view_1d_ptr_array = typename KT::template view_1d_ptr_carray<S, N>;
@@ -321,7 +323,35 @@ struct Functions
     const uview_1d<Spack>&       qv);
 
   KOKKOS_FUNCTION
-  static void update_prognostics_implicit(const Int& shcol, const Int& nlev, const Int& nlevi, const Int& num_tracer, const Spack& dtime, const uview_1d<const Spack>& dz_zt, const uview_1d<const Spack>& dz_zi, const uview_1d<const Spack>& rho_zt, const uview_1d<const Spack>& zt_grid, const uview_1d<const Spack>& zi_grid, const uview_1d<const Spack>& tk, const uview_1d<const Spack>& tkh, const uview_1d<const Spack>& uw_sfc, const uview_1d<const Spack>& vw_sfc, const uview_1d<const Spack>& wthl_sfc, const uview_1d<const Spack>& wqw_sfc, const uview_1d<const Spack>& wtracer_sfc, const uview_1d<Spack>& thetal, const uview_1d<Spack>& qw, const uview_1d<Spack>& tracer, const uview_1d<Spack>& tke, const uview_1d<Spack>& u_wind, const uview_1d<Spack>& v_wind);
+  static void update_prognostics_implicit(
+    const MemberType&            team,
+    const Int&                   nlev,
+    const Int&                   nlevi,
+    const Int&                   num_tracer,
+    const Scalar&                dtime,
+    const uview_1d<const Spack>& dz_zt,
+    const uview_1d<const Spack>& dz_zi,
+    const uview_1d<const Spack>& rho_zt,
+    const uview_1d<const Spack>& zt_grid,
+    const uview_1d<const Spack>& zi_grid,
+    const uview_1d<const Spack>& tk,
+    const uview_1d<const Spack>& tkh,
+    const Scalar&                uw_sfc,
+    const Scalar&                vw_sfc,
+    const Scalar&                wthl_sfc,
+    const Scalar&                wqw_sfc,
+    const uview_1d<const Spack>& wtracer_sfc,
+    const uview_1d<Spack>&       rdp_zt,
+    const uview_1d<Spack>&       tmpi,
+    const uview_2d<Spack>&       tkh_zi,
+    const uview_1d<Spack>&       tk_zi,
+    const uview_1d<Spack>&       rho_zi,
+    const uview_1d<Spack>&       thetal,
+    const uview_1d<Spack>&       qw,
+    const uview_2d<Spack>&       tracer,
+    const uview_1d<Spack>&       tke,
+    const uview_1d<Spack>&       u_wind,
+    const uview_1d<Spack>&       v_wind);
 
   KOKKOS_FUNCTION
   static void diag_third_shoc_moments(

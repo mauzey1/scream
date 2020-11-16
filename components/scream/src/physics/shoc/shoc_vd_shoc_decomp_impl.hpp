@@ -31,6 +31,8 @@ void Functions<S,D>::vd_shoc_decomp(
   const auto stmpi = scalarize(tmpi);
 
   const Int nlev_pack = ekat::npack<Spack>(nlev);
+
+  // Compute entries of the tridiagonal system
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev_pack), [&] (const Int& k) {
     // Compute shift of kv_term and tmpi
     Spack kv_term_k, kv_term_kp1, tmpi_k, tmpi_kp1;
@@ -52,8 +54,9 @@ void Functions<S,D>::vd_shoc_decomp(
 
     // The diagonal elements are a combination of du and dl (d=1-du-dl). Surface
     // fluxes are applied explicitly in the diagonal at the top level.
-    d(k) = 1 - du(k) - dl(k);
-    d(k).set(range_pack == nlev-1, d(k) + flux*dtime*ggr*rdp_zt(k));
+    d(k).set(range_pack == 0, 1 - du(k));
+    d(k).set(0 < range_pack && range_pack < nlev-1, 1 - du(k) - dl(k));
+    d(k).set(range_pack == nlev-1, 1 - dl(k) + flux*dtime*ggr*rdp_zt(k));
   });
 }
 
