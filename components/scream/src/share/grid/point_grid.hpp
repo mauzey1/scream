@@ -40,18 +40,7 @@ public:
   // E.g., for a 2d structured grid, this could be a set of 2 indices.
   FieldLayout get_native_dof_layout () const override;
 
-  // Get dofs geo info
-  const geo_view_1d& get_dofs_area   () const { return m_dofs_area; }
-  const geo_view_2d& get_dofs_coords () const { return m_dofs_coords; }
-
-  void set_geometry_data (const geo_view_2d& dofs_coords,
-                          const geo_view_1d& dofs_area);
-
-private:
-
-  // Geometric info
-  geo_view_2d      m_dofs_coords;
-  geo_view_1d      m_dofs_area;
+  void set_geometry_data (const std::string& name, const geo_view_type& data) override;
 };
 
 // Create a point grid, with linear range of gids, evenly partitioned

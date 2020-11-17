@@ -20,20 +20,26 @@ public:
 
   std::string name () const { return "Dynamics Driven Grids Manager"; }
 
+  void build_grids (const std::set<std::string>& grid_names,
+                    const std::string& reference_grid);
+
+  std::set<std::string> supported_grids () const { return m_valid_grid_names; }
 protected:
 
   remapper_ptr_type
   do_create_remapper (const grid_ptr_type from_grid,
                       const grid_ptr_type to_grid) const;
 
-  void build_grid (const std::string& grid_names);
-
   void build_dynamics_grid ();
-  void build_physics_grid  ();
+  void build_physics_grid  (const std::string& name);
 
   const grid_repo_type& get_repo () const { return m_grids; }
 
   grid_repo_type  m_grids;
+
+  std::set<std::string> m_valid_grid_names;
+  std::set<std::string> m_dyn_grid_aliases;
+  std::map<int,std::set<std::string>> m_phys_grid_aliases;
 
   ekat::ParameterList m_params;
 };

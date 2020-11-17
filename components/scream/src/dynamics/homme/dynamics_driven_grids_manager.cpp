@@ -15,14 +15,57 @@ namespace scream
 DynamicsDrivenGridsManager::DynamicsDrivenGridsManager (const ekat::Comm& /* comm */, const ekat::ParameterList& p)
  : m_params(p)
 {
-  // Nothing to do here
+  // Valid names for the dyn grid
+  auto& dgn = m_dyn_grid_aliases;
+
+  dgn.insert("Dynamics");
+  dgn.insert("SE Dynamics");
+  dgn.insert("GLL");
+  dgn.insert("Dyn Grid");
+
+  // Valid names for the different phys grids
+
+  // No redistribution of columns
+  auto& pg0 = m_phys_grid_aliases[0];
+  pg0.insert("Physics");
+  pg0.insert("Physics GLL"); // Phys columns are SE gll points
+
+  auto& pg2 = m_phys_grid_aliases[2];
+  pg2.insert("Phys Grid");
+  pg2.insert("Physics PG2"); // Phys columns are FV points in 2x2 subcells of SE cell
+
+  auto& pg3 = m_phys_grid_aliases[3];
+  pg3.insert("Physics PG3"); // Phys columns are FV points in 3x3 subcells of SE cell
+
+  // Twin columns
+  auto& pg10 = m_phys_grid_aliases[10];
+  pg10.insert("Physics Twin");     // Same as GLL
+  pg10.insert("Physics GLL Twin"); // Phys columns are SE gll points
+
+  auto& pg12 = m_phys_grid_aliases[10];
+  pg12.insert("Phys Grid Twin");
+  pg12.insert("Physics PG2 Twin"); // Phys columns are FV points in 2x2 subcells of SE cell
+
+  auto& pg13 = m_phys_grid_aliases[10];
+  pg13.insert("Physics PG3 Twin"); // Phys columns are FV points in 2x2 subcells of SE cell
+
+  // TODO: add other rebalancing?
+
+  for (const auto& gn : dgn) {
+    m_valid_grid_names.insert(gn);
+  }
+  for (const auto& it : m_phys_grid_aliases) {
+    for (const auto& gn : it.second) {
+      m_valid_grid_names.insert(gn);
+    }
+  }
 }
 
 DynamicsDrivenGridsManager::remapper_ptr_type
 DynamicsDrivenGridsManager::do_create_remapper (const grid_ptr_type from_grid,
                                                 const grid_ptr_type to_grid) const {
   using PDR = PhysicsDynamicsRemapper<remapper_type::real_type>;
-  auto pd_remapper = std::make_shared<PDR>(m_grids.at("SE Physics"),m_grids.at("SE Dynamics"));
+  auto pd_remapper = std::make_shared<PDR>(m_grids.at("Physics"),m_grids.at("Dynamics"));
   if (from_grid->name()=="SE Physics" &&
       to_grid->name()=="SE Dynamics") {
     return pd_remapper;
@@ -33,8 +76,14 @@ DynamicsDrivenGridsManager::do_create_remapper (const grid_ptr_type from_grid,
   return nullptr;
 }
 
-void DynamicsDrivenGridsManager::build_grid (const std::string& grid_name)
-{
+void DynamicsDrivenGridsManager::
+build_grids (const std::set<std::string>& grid_names,
+             const std::string& reference_grid) {
+  // Sanity check first
+  for (const auto& gn : grid_names) {
+    EKAT_REQUIRE_MSG (supported_grids().count(gn)==1,
+                      "Error! Grid '" + gn + "' is not supported by this grid manager.\n");
+  }
   // We cannot start to build SCREAM grid structures until homme has inited the geometry,
   // so do that if not already done.
   // NOTE: this *requires* that init_parallel_f90 and init_params_f90 have already been
@@ -44,34 +93,37 @@ void DynamicsDrivenGridsManager::build_grid (const std::string& grid_name)
     init_geometry_f90();
   }
 
-  if (grid_name=="SE Physics") {
-    build_physics_grid();
-  } else if (grid_name=="SE Dynamics") {
-    build_dynamics_grid();
+  // We know we need the dyn grid, so build it
+  build_dynamics_grid ();
+
+  for (const auto& gn : grid_names) {
+    build_physics_grid(gn);
   }
 
-  if (grid_name==m_params.get<std::string>("Reference Grid")) {
-    m_grids["Reference"] = get_grid(grid_name);
-  }
+  // Set the ptr to the ref grid
+  m_grids["Reference"] = get_grid(reference_grid); 
 }
 
 void DynamicsDrivenGridsManager::build_dynamics_grid () {
-  if (m_grids.find("SE Dynamics")==m_grids.end()) {
+  if (m_grids.find("Dynamics")==m_grids.end()) {
 
     // Initialize the dyn grid
     const int nelemd = get_num_owned_elems_f90();
     const int nlev   = get_nlev_f90();
     auto dyn_grid = std::make_shared<SEGrid>("SE Dynamics",nelemd,NP,nlev);
 
+    const int ndofs = nelemd*NP*NP;
+
     // Create dynamics dofs map
-    AbstractGrid::dofs_list_type      dofs("dyn dofs",nelemd*NP*NP);
-    AbstractGrid::lid_to_idx_map_type lids_to_elgpgp("dyn lid to elgpgp",nelemd*NP*NP,3);
+    AbstractGrid::dofs_list_type      dofs("dyn dofs",ndofs);
+    AbstractGrid::lid_to_idx_map_type lids_to_elgpgp("dyn lid to elgpgp",ndofs,3);
+    AbstractGrid::geo_view_type       lat("lat",ndofs);
 
     auto h_lids_to_elgpgp = Kokkos::create_mirror_view(lids_to_elgpgp);
     auto h_dofs = Kokkos::create_mirror_view(dofs);
 
     // Get (ie,igp,jgp,gid) data for each dof
-    get_cols_indices_f90(h_dofs.data(),h_lids_to_elgpgp.data(),false);
+    get_dyn_grid_data_f90 (h_dofs.data(),h_lids_to_elgpgp.data(), h_lat.data(), h_lon.data());
 
     Kokkos::deep_copy(dofs,h_dofs);
     Kokkos::deep_copy(lids_to_elgpgp,h_lids_to_elgpgp);
@@ -79,18 +131,46 @@ void DynamicsDrivenGridsManager::build_dynamics_grid () {
     dyn_grid->set_dofs (dofs, lids_to_elgpgp);
 
     // Set the grid in the map
-    m_grids["SE Dynamics"] = m_grids["Dynamics"] = dyn_grid;
+    for (const auto& gn : m_dyn_grid_aliases) {
+      m_grids[gn] = dyn_grid;
+    }
   }
 }
 
-void DynamicsDrivenGridsManager::build_physics_grid () {
-  if (m_grids.find("Physics")==m_grids.end()) {
+void DynamicsDrivenGridsManager::
+build_physics_grid (const std::string& name) {
+
+  // Codes for the physics grids to build
+  constexpr int gll = 0;    // Physics GLL
+  constexpr int pg2 = 2;    // Physics PG2
+  constexpr int pg3 = 3;    // Physics PG3
+  constexpr int gll_t = 10;  // Physics GLL Twin
+  constexpr int pg2_t = 12;  // Physics PG2 Twin
+  constexpr int pg3_t = 13;  // Physics PG3 Twin
+
+  int pg_type;
+
+  if (name=="Physics" || name=="Physics GLL") {
+    pg_type = gll;
+  } else if (name=="Phys Grid" || name=="Physics PG2") {
+    pg_type = pg2;
+  } else if (name=="Physics Twin" || name=="Physics GLL Twin") {
+    pg_type = gll_t;
+  } else if (name=="Phys Grid Twin" || name=="Physics PG2 Twin") {
+    pg_type = pg2_t;
+  } else if (name=="Physics PG3") {
+    pg_type = pg3;
+  } else if (name=="Physics PG3 Twin") {
+    pg_type = pg3_t;
+  }
+  
+  if (m_grids.find(name)==m_grids.end()) {
 
     // Initialize the phys grid
     const int nlev = get_nlev_f90();
 
     // Create the physics dofs map
-    const int num_cols = get_num_owned_columns_f90 ();
+    const int num_cols = get_num_local_columns_f90 ();
     AbstractGrid::dofs_list_type dofs("phys dofs",num_cols);
     auto h_dofs = Kokkos::create_mirror_view(dofs);
 

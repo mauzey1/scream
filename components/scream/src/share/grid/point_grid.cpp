@@ -31,19 +31,14 @@ PointGrid::get_native_dof_layout () const
 }
 
 void PointGrid::
-set_geometry_data (const geo_view_2d& dofs_coords,
-                   const geo_view_1d& dofs_area)
-{
+set_geometry_data (const std::string& name, const geo_view_type& data) {
   // Sanity checks
-  EKAT_REQUIRE_MSG (dofs_coords.extent_int(0)==2,
-                    "Error! Input dofs coords has wrong dimensions.\n");
-  EKAT_REQUIRE_MSG (dofs_coords.extent_int(1)==m_num_local_dofs,
-                    "Error! Input dofs coords has wrong dimensions.\n");
-  EKAT_REQUIRE_MSG (dofs_area.extent_int(0)==m_num_local_dofs,
-                    "Error! Input dofs area has wrong dimensions.\n");
+  EKAT_REQUIRE_MSG (data.extent_int(0)==m_num_local_dofs,
+                    "Error! Input geometry data has wrong dimensions.\n");
+  EKAT_REQUIRE_MSG (name=="lat" || name=="lon",
+                    "Error! Point grid does not support geometry data '" + name + "'.\n");
 
-  m_dofs_coords = dofs_coords;
-  m_dofs_area   = dofs_area;
+  m_geo_views[name] = data;
 }
 
 PointGrid

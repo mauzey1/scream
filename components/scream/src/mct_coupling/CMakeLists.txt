@@ -5,8 +5,8 @@ if ("${SCREAM_DYNAMICS_DYCORE}" STREQUAL "HOMME")
   #       outside this folder (and not in a parent folder),
   #       so the results of find_package have been lost
   #       as soon as we got out of that scope
-  find_package(BLAS REQUIRED)
-  find_package(LAPACK REQUIRED)
+  # find_package(BLAS REQUIRED)
+  # find_package(LAPACK REQUIRED)
 
   # Recall that src/dynamics/homme/CMakeLists.txt does not build a dyn lib.
   # It only defines a macro to build it, so that different tests can build
@@ -28,9 +28,7 @@ if ("${SCREAM_DYNAMICS_DYCORE}" STREQUAL "HOMME")
   target_include_directories (
     ${dynLibName}
     PUBLIC
-    ${INSTALL_SHAREDPATH}/pio/pio${PIO_VERSION}/pio
     ${INSTALL_SHAREDPATH}/mct/noesmf/${NINST_VALUE}/csm_share
-    ${NetCDF_Fortran_PATH}/include
   )
 
   target_link_libraries(${dynLibName} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})

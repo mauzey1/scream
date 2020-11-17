@@ -5,6 +5,8 @@
 #include "share/field/field_layout.hpp"
 #include "share/scream_types.hpp"
 
+#include <map>
+
 namespace scream
 {
 
@@ -34,9 +36,11 @@ namespace scream
 class AbstractGrid
 {
 public:
-  using gid_type       = int;           // TODO: use int64_t? int? template class on gid_type?
-  using device_type    = DefaultDevice; // TODO: template class on device type
-  using kokkos_types   = KokkosTypes<device_type>;
+  using gid_type          = int;           // TODO: use int64_t? int? template class on gid_type?
+  using device_type       = DefaultDevice; // TODO: template class on device type
+  using kokkos_types      = KokkosTypes<device_type>;
+  using geo_view_type     = kokkos_types::view_1d<double>;
+  using geo_view_map_type = std::map<std::string,geo_view_type>;
 
   // The list of all dofs' gids
   using dofs_list_type = kokkos_types::view_1d<gid_type>;
@@ -88,6 +92,10 @@ public:
   // the i-th dof in the native dof layout.
   const lid_to_idx_map_type& get_lid_to_idx_map () const { return m_lid_to_idx; }
 
+  // Set/get geometric views. The setter is virtual, so each grid can check if "name" is supported.
+  virtual void set_geometry_data (const std::string& name, const geo_view_type& data) = 0;
+  const geo_view_type& get_geometry_data (const std::string& name) const;
+
 protected:
 
   // The grid name and type
@@ -104,7 +112,16 @@ protected:
 
   // The map lid->idx
   lid_to_idx_map_type   m_lid_to_idx;
+
+  geo_view_map_type     m_geo_views;
 };
+
+inline const AbstractGrid::geo_view_type&
+AbstractGrid::get_geometry_data (const std::string& name) const {
+  EKAT_REQUIRE_MSG (m_geo_views.find(name)!=m_geo_views.end(),
+                    "Error! Grid '" + m_name + "' does not store geometric data '" + name + "'.\n");
+  return m_geo_views.at(name);
+}
 
 } // namespace scream
 

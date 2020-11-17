@@ -49,4 +49,16 @@ set_dofs (const dofs_list_type&      dofs,
   m_lid_to_idx = lid_to_idx;
 }
 
+void SEGrid::
+set_geometry_data (const std::string& name, const geo_view_type& data) {
+  // Sanity checks
+  EKAT_REQUIRE_MSG (data.extent_int(0)==m_num_local_dofs,
+                    "Error! Input geometry data has wrong dimensions.\n");
+  EKAT_REQUIRE_MSG (name=="lat" || name=="lon" || name=="area",
+                    "Error! Point grid does not support geometry data '" + name + "'.\n");
+
+  m_geo_views[name] = data;
+}
+
+
 } // namespace scream

@@ -28,6 +28,8 @@ public:
   void set_dofs (const dofs_list_type&      dofs,
                  const lid_to_idx_map_type& lid_to_elgpgp);
 
+  void set_geometry_data (const std::string& name, const geo_view_type& data) override;
+
 protected:
 
   // SE dims
